@@ -6,6 +6,7 @@
 <title>我的會員</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#f5f5f3">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="我的會員">
@@ -412,7 +413,7 @@ document.addEventListener('keydown', e => {
 
 // ── Service Worker ─────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(console.error);
+  navigator.serviceWorker.register('./sw.js').catch(console.error);
 }
 
 // ── Boot ───────────────────────────────────────────────
