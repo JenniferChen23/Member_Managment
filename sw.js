@@ -1,8 +1,8 @@
 const CACHE = 'my-member-v1';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json'
+  '/Member_Managment/',
+  '/Member_Managment/index.html',
+  '/Member_Managment/manifest.json'
 ];
 
 self.addEventListener('install', e => {
