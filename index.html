@@ -103,6 +103,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <button class="btn" onclick="openExport()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>匯出
       </button>
+      <button class="btn" onclick="openBackup()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><path d="M12 22C6.48 22 2 17.52 2 12S6.48 2 12 2s10 4.48 10 10"/><path d="M16 16l4 4m0 0l4-4m-4 4V12"/></svg>備份
+      </button>
+      <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="importJSON(event)">
     </div>
   </div>
   <div class="search-wrap">
@@ -182,6 +186,26 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <button class="btn btn-primary" onclick="doPrint()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>列印 / 存 PDF
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- Backup Modal -->
+<div class="overlay" id="backupOverlay">
+  <div class="modal" style="max-width:340px">
+    <h2>備份 / 還原</h2>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:1.25rem">建議定期匯出備份，避免 iOS 自動清除資料。</p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn btn-primary" onclick="exportJSON()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>匯出 JSON 備份
+      </button>
+      <button class="btn" onclick="document.getElementById('importFileInput').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg>匯入 JSON 還原
+      </button>
+      <p style="font-size:11px;color:var(--danger-text)">⚠️ 匯入會覆蓋現有全部資料，請確認後再執行。</p>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeBackup()">關閉</button>
     </div>
   </div>
 </div>
@@ -505,6 +529,60 @@ async function saveSettings() {
   showToast('設定已儲存');
 }
 
+// ── Backup / Restore ──────────────────────────────────
+function openBackup() { document.getElementById('backupOverlay').classList.add('show'); }
+function closeBackup() { document.getElementById('backupOverlay').classList.remove('show'); }
+
+function exportJSON() {
+  const payload = JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), entries }, null, 2);
+  const blob = new Blob([payload], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const date = new Date().toLocaleDateString('zh-TW').replace(/\//g, '-');
+  a.href = url;
+  a.download = `member_backup_${date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('備份已下載');
+}
+
+async function importJSON(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+
+    // 支援兩種格式：{ version, entries } 或直接是 array
+    const imported = Array.isArray(parsed) ? parsed : parsed.entries;
+    if (!Array.isArray(imported)) throw new Error('格式錯誤');
+
+    // 驗證每筆資料至少有 id 和 name
+    for (const item of imported) {
+      if (!item.id || !item.name) throw new Error('資料缺少必要欄位');
+    }
+
+    // 清除現有資料，寫入匯入的資料
+    const tx = db.transaction(STORE_ENTRIES, 'readwrite');
+    const store = tx.objectStore(STORE_ENTRIES);
+    await new Promise((res, rej) => {
+      const clear = store.clear();
+      clear.onsuccess = () => res();
+      clear.onerror = e => rej(e.target.error);
+    });
+    for (const item of imported) await dbPut(STORE_ENTRIES, item);
+
+    entries = imported;
+    closeBackup();
+    renderList();
+    showToast(`已還原 ${imported.length} 筆資料`);
+  } catch (err) {
+    showToast('匯入失敗：' + err.message);
+  }
+}
+
 // ── Export ────────────────────────────────────────────
 function openExport() {
   if (!entries.length) { showToast('還沒有任何資料可以匯出'); return; }
@@ -528,7 +606,7 @@ function doPrint() {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeForm(); closeDelete(); closeExport(); closeSettings(); }
+  if (e.key === 'Escape') { closeForm(); closeDelete(); closeExport(); closeSettings(); closeBackup(); }
 });
 
 // ── 啟動 ──────────────────────────────────────────────
