@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>我的會員</title>
-<link rel="manifest" href="manifest.json">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -100,9 +99,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <button class="btn" onclick="openSettings()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>設定
       </button>
-
-      <button class="btn" onclick="openBackup()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><path d="M12 22C6.48 22 2 17.52 2 12S6.48 2 12 2s10 4.48 10 10"/><path d="M16 16l4 4m0 0l4-4m-4 4V12"/></svg>備份
+      <button class="btn" onclick="openExport()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>匯出
       </button>
       <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="importJSON(event)">
     </div>
@@ -119,7 +117,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <div class="overlay" id="formOverlay">
   <div class="modal">
     <h2 id="formTitle">新增帳號密碼</h2>
-    <div class="modal-tabs" id="formTabs">
+    <div class="modal-tabs">
       <button class="tab-btn active" onclick="switchTab('normal')">一般</button>
       <button class="tab-btn" onclick="switchTab('advanced')">進階</button>
     </div>
@@ -216,7 +214,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <div class="toast" id="toast"></div>
 
 <script>
-// ── IndexedDB 初始化 ───────────────────────────────────
 const DB_NAME = 'MemberMgmt';
 const DB_VERSION = 1;
 const STORE_ENTRIES = 'entries';
@@ -227,60 +224,45 @@ let db = null;
 function openDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
-
     req.onupgradeneeded = e => {
       const d = e.target.result;
-      if (!d.objectStoreNames.contains(STORE_ENTRIES)) {
-        d.createObjectStore(STORE_ENTRIES, { keyPath: 'id' });
-      }
-      if (!d.objectStoreNames.contains(STORE_SETTINGS)) {
-        d.createObjectStore(STORE_SETTINGS, { keyPath: 'key' });
-      }
+      if (!d.objectStoreNames.contains(STORE_ENTRIES)) d.createObjectStore(STORE_ENTRIES, { keyPath: 'id' });
+      if (!d.objectStoreNames.contains(STORE_SETTINGS)) d.createObjectStore(STORE_SETTINGS, { keyPath: 'key' });
     };
-
     req.onsuccess = e => { db = e.target.result; resolve(db); };
     req.onerror = e => reject(e.target.error);
   });
 }
 
-// ── DB helpers ────────────────────────────────────────
-function dbGetAll(storeName) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, 'readonly');
-    const req = tx.objectStore(storeName).getAll();
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = e => reject(e.target.error);
+function dbGetAll(store) {
+  return new Promise((res, rej) => {
+    const req = db.transaction(store, 'readonly').objectStore(store).getAll();
+    req.onsuccess = () => res(req.result);
+    req.onerror = e => rej(e.target.error);
   });
 }
 
-function dbPut(storeName, obj) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, 'readwrite');
-    const req = tx.objectStore(storeName).put(obj);
-    req.onsuccess = () => resolve();
-    req.onerror = e => reject(e.target.error);
+function dbPut(store, obj) {
+  return new Promise((res, rej) => {
+    const req = db.transaction(store, 'readwrite').objectStore(store).put(obj);
+    req.onsuccess = () => res();
+    req.onerror = e => rej(e.target.error);
   });
 }
 
-function dbDelete(storeName, key) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, 'readwrite');
-    const req = tx.objectStore(storeName).delete(key);
-    req.onsuccess = () => resolve();
-    req.onerror = e => reject(e.target.error);
+function dbDelete(store, key) {
+  return new Promise((res, rej) => {
+    const req = db.transaction(store, 'readwrite').objectStore(store).delete(key);
+    req.onsuccess = () => res();
+    req.onerror = e => rej(e.target.error);
   });
 }
 
-// ── App state ─────────────────────────────────────────
-let entries = [];
-let settings = { defaultAccount: '' };
+let entries = [], settings = { defaultAccount: '' };
 let editId = null, deleteId = null, formEyeOpen = false, currentTab = 'normal';
 
-// ── 載入資料 ──────────────────────────────────────────
 async function loadData() {
   entries = await dbGetAll(STORE_ENTRIES);
-
-  // 第一次開啟：寫入 demo 資料
   if (entries.length === 0) {
     const demos = [
       { id: 'demo1', type: 'normal', name: 'GitHub', note: '工作用', user: 'work@email.com', pass: 'Gh@SecurePass1' },
@@ -293,15 +275,12 @@ async function loadData() {
     for (const d of demos) await dbPut(STORE_ENTRIES, d);
     entries = demos;
   }
-
-  const settingsRows = await dbGetAll(STORE_SETTINGS);
-  const found = settingsRows.find(r => r.key === 'main');
+  const rows = await dbGetAll(STORE_SETTINGS);
+  const found = rows.find(r => r.key === 'main');
   if (found) settings = found.value;
-
   renderList();
 }
 
-// ── Colors ────────────────────────────────────────────
 const colors = [
   {bg:'#e6f1fb',text:'#185fa5'},{bg:'#fcebeb',text:'#a32d2d'},
   {bg:'#eaf3de',text:'#3b6d11'},{bg:'#faeeda',text:'#854f0b'},
@@ -311,11 +290,9 @@ function colorFor(n) { let h=0; for (let c of n) h=(h*31+c.charCodeAt(0))&0xffff
 function initials(n) { return n.slice(0,2).toUpperCase(); }
 function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 
-// ── Toast ─────────────────────────────────────────────
 function showToast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1600); }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-// ── Icons ─────────────────────────────────────────────
 const copyIcon  = () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
 const checkIcon = () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`;
 const eyeIcon   = o => o
@@ -324,7 +301,6 @@ const eyeIcon   = o => o
 const editIcon  = () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="13" height="13"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
 const trashIcon = () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`;
 
-// ── Render ────────────────────────────────────────────
 function renderList() {
   const q = document.getElementById('searchInput').value.toLowerCase();
   const filtered = entries.filter(e =>
@@ -335,38 +311,23 @@ function renderList() {
   );
   const list = document.getElementById('cardList');
   document.getElementById('countLabel').textContent = `已儲存 ${entries.length} 筆${q ? `，符合 ${filtered.length} 筆` : ''}`;
-
-  if (!entries.length) {
-    list.innerHTML = `<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><p>還沒有任何帳號，點擊「新增」開始記錄</p></div>`;
-    return;
-  }
-  if (!filtered.length) {
-    list.innerHTML = `<div class="empty"><p>找不到符合「${q}」的結果</p></div>`;
-    return;
-  }
-
+  if (!entries.length) { list.innerHTML = `<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><p>還沒有任何帳號，點擊「新增」開始記錄</p></div>`; return; }
+  if (!filtered.length) { list.innerHTML = `<div class="empty"><p>找不到符合「${q}」的結果</p></div>`; return; }
   list.innerHTML = filtered.map(e => {
     const col = colorFor(e.name);
     const isAdv = e.type === 'advanced';
     let fieldsHtml = '';
-
     if (isAdv) {
       fieldsHtml = (e.fields||[]).filter(f => f.label||f.value).map((f, i) => {
         const isPw = f.fieldType === 'password';
         const pwId = `pw-${e.id}-${i}`;
-        return `<div class="field"><div class="field-label">${esc(f.label||'欄位')}</div><div class="field-row">${isPw
-          ? `<span class="field-value" id="${pwId}" data-show="0" data-val="${esc(f.value)}">••••••••</span>`
-          : `<span class="field-value">${esc(f.value)}</span>`
-        }<div style="display:flex;gap:2px">${isPw ? `<button class="icon-btn" onclick="togglePw('${pwId}')">${eyeIcon(false)}</button>` : ''}<button class="icon-btn" onclick="copyVal('${esc(f.value)}',this)">${copyIcon()}</button></div></div></div>`;
+        return `<div class="field"><div class="field-label">${esc(f.label||'欄位')}</div><div class="field-row">${isPw ? `<span class="field-value" id="${pwId}" data-show="0" data-val="${esc(f.value)}">••••••••</span>` : `<span class="field-value">${esc(f.value)}</span>`}<div style="display:flex;gap:2px">${isPw ? `<button class="icon-btn" onclick="togglePw('${pwId}')">${eyeIcon(false)}</button>` : ''}<button class="icon-btn" onclick="copyVal('${esc(f.value)}',this)">${copyIcon()}</button></div></div></div>`;
       }).join('');
     } else {
       const hasUser = e.user && e.user.trim();
-      fieldsHtml = (hasUser
-        ? `<div class="field"><div class="field-label">帳號</div><div class="field-row"><span class="field-value">${esc(e.user)}</span><button class="icon-btn" onclick="copyVal('${esc(e.user)}',this)">${copyIcon()}</button></div></div>`
-        : '') +
+      fieldsHtml = (hasUser ? `<div class="field"><div class="field-label">帳號</div><div class="field-row"><span class="field-value">${esc(e.user)}</span><button class="icon-btn" onclick="copyVal('${esc(e.user)}',this)">${copyIcon()}</button></div></div>` : '') +
         `<div class="field"><div class="field-label">密碼</div><div class="field-row"><span class="field-value" id="pw-${e.id}" data-show="0" data-val="${esc(e.pass)}">••••••••</span><div style="display:flex;gap:2px"><button class="icon-btn" onclick="togglePw('pw-${e.id}')">${eyeIcon(false)}</button><button class="icon-btn" onclick="copyVal('${esc(e.pass)}',this)">${copyIcon()}</button></div></div></div>`;
     }
-
     return `<div class="card"><div class="card-header"><div class="avatar" style="background:${col.bg};color:${col.text}">${initials(e.name)}</div><div><div class="card-title">${esc(e.name)}${isAdv ? '<span class="badge-adv">進階</span>' : ''}</div>${e.note ? `<div class="card-note">${esc(e.note)}</div>` : ''}</div></div><div class="card-body">${fieldsHtml}</div><div class="card-actions"><button class="btn btn-sm" onclick="openEdit('${e.id}')">${editIcon()} 編輯</button><button class="btn btn-sm btn-danger" onclick="openDelete('${e.id}')">${trashIcon()} 刪除</button></div></div>`;
   }).join('');
 }
@@ -386,7 +347,6 @@ function copyVal(val, btn) {
   showToast('已複製到剪貼簿');
 }
 
-// ── Tabs ──────────────────────────────────────────────
 function switchTab(tab) {
   currentTab = tab;
   document.getElementById('normalForm').style.display = tab === 'normal' ? '' : 'none';
@@ -394,7 +354,6 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', (i===0&&tab==='normal')||(i===1&&tab==='advanced')));
 }
 
-// ── Adv fields ────────────────────────────────────────
 function addAdvField(label='', value='', fieldType='text') {
   const wrap = document.getElementById('advFieldList');
   const row = document.createElement('div');
@@ -411,7 +370,6 @@ function getAdvFields() {
   }));
 }
 
-// ── Add / Edit ────────────────────────────────────────
 function openAdd() {
   editId = null;
   document.getElementById('formTitle').textContent = '新增帳號密碼';
@@ -475,38 +433,26 @@ async function saveEntry() {
     const pass = document.getElementById('fPass').value;
     if (!name || !pass) { showToast('請填寫服務名稱與密碼'); return; }
     const note = document.getElementById('fNote').value.trim();
-    const userInput = document.getElementById('fUser').value.trim();
-    const user = userInput || settings.defaultAccount || '';
+    const user = document.getElementById('fUser').value.trim() || settings.defaultAccount || '';
     entry = editId
       ? { ...entries.find(x => x.id === editId), name, note, user, pass, type: 'normal' }
       : { id: uid(), name, note, user, pass, type: 'normal' };
   }
-
   await dbPut(STORE_ENTRIES, entry);
-  if (editId) {
-    entries = entries.map(x => x.id === editId ? entry : x);
-  } else {
-    entries.push(entry);
-  }
-
+  entries = editId ? entries.map(x => x.id === editId ? entry : x) : [...entries, entry];
   showToast(editId ? '已更新' : '已新增');
-  closeForm();
-  renderList();
+  closeForm(); renderList();
 }
 
-// ── Delete ────────────────────────────────────────────
 function openDelete(id) { deleteId = id; document.getElementById('delOverlay').classList.add('show'); }
 function closeDelete() { deleteId = null; document.getElementById('delOverlay').classList.remove('show'); }
 
 async function confirmDelete() {
   await dbDelete(STORE_ENTRIES, deleteId);
   entries = entries.filter(x => x.id !== deleteId);
-  closeDelete();
-  renderList();
-  showToast('已刪除');
+  closeDelete(); renderList(); showToast('已刪除');
 }
 
-// ── Settings ──────────────────────────────────────────
 function openSettings() {
   document.getElementById('defaultAccountInput').value = settings.defaultAccount || '';
   document.getElementById('settingsOverlay').classList.add('show');
@@ -516,14 +462,10 @@ function closeSettings() { document.getElementById('settingsOverlay').classList.
 async function saveSettings() {
   settings.defaultAccount = document.getElementById('defaultAccountInput').value.trim();
   await dbPut(STORE_SETTINGS, { key: 'main', value: settings });
-  closeSettings();
-  showToast('設定已儲存');
+  closeSettings(); showToast('設定已儲存');
 }
 
 // ── Backup / Restore ──────────────────────────────────
-function openBackup() { document.getElementById('backupOverlay').classList.add('show'); }
-function closeBackup() { document.getElementById('backupOverlay').classList.remove('show'); }
-
 function exportJSON() {
   const payload = JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), entries }, null, 2);
   const blob = new Blob([payload], { type: 'application/json' });
@@ -541,40 +483,31 @@ async function importJSON(e) {
   const file = e.target.files[0];
   e.target.value = '';
   if (!file) return;
-
   try {
     const text = await file.text();
     const parsed = JSON.parse(text);
-
-    // 支援兩種格式：{ version, entries } 或直接是 array
     const imported = Array.isArray(parsed) ? parsed : parsed.entries;
     if (!Array.isArray(imported)) throw new Error('格式錯誤');
-
-    // 驗證每筆資料至少有 id 和 name
     for (const item of imported) {
       if (!item.id || !item.name) throw new Error('資料缺少必要欄位');
     }
-
-    // 清除現有資料，寫入匯入的資料
     const tx = db.transaction(STORE_ENTRIES, 'readwrite');
     const store = tx.objectStore(STORE_ENTRIES);
     await new Promise((res, rej) => {
-      const clear = store.clear();
-      clear.onsuccess = () => res();
-      clear.onerror = e => rej(e.target.error);
+      const req = store.clear();
+      req.onsuccess = () => res();
+      req.onerror = e => rej(e.target.error);
     });
     for (const item of imported) await dbPut(STORE_ENTRIES, item);
-
     entries = imported;
-    closeBackup();
-    renderList();
+    closeSettings(); renderList();
     showToast(`已還原 ${imported.length} 筆資料`);
   } catch (err) {
     showToast('匯入失敗：' + err.message);
   }
 }
 
-// ── Export ────────────────────────────────────────────
+// ── Export PDF ────────────────────────────────────────
 function openExport() {
   if (!entries.length) { showToast('還沒有任何資料可以匯出'); return; }
   const rows = entries.map(e => {
@@ -617,10 +550,9 @@ function doPrint() {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeForm(); closeDelete(); closeExport(); closeSettings(); closeBackup(); }
+  if (e.key === 'Escape') { closeForm(); closeDelete(); closeExport(); closeSettings(); }
 });
 
-// ── 啟動 ──────────────────────────────────────────────
 openDB().then(loadData).catch(err => {
   document.getElementById('countLabel').textContent = 'IndexedDB 初始化失敗';
   console.error(err);
