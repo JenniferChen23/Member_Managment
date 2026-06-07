@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<link rel="manifest" href="manifest.json">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>我的會員</title>
+<link rel="manifest" href="manifest.json">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -100,9 +100,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <button class="btn" onclick="openSettings()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>設定
       </button>
-      <button class="btn" onclick="openExport()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>匯出
-      </button>
+
       <button class="btn" onclick="openBackup()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><path d="M12 22C6.48 22 2 17.52 2 12S6.48 2 12 2s10 4.48 10 10"/><path d="M16 16l4 4m0 0l4-4m-4 4V12"/></svg>備份
       </button>
@@ -169,6 +167,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div class="setting-desc">新增時帳號欄位留空會自動帶入</div>
       <input type="text" id="defaultAccountInput" placeholder="輸入預設帳號 / Email" style="width:100%;padding:9px 11px;border-radius:var(--radius);border:0.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;outline:none;">
     </div>
+    <div class="setting-row">
+      <div class="setting-label">備份與還原</div>
+      <div class="setting-desc">建議定期備份，避免 iOS 自動清除資料。</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn" onclick="exportJSON()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>匯出 JSON 備份
+        </button>
+        <button class="btn" onclick="document.getElementById('importFileInput').click()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg>匯入 JSON 還原
+        </button>
+        <p style="font-size:11px;color:var(--danger-text)">⚠️ 匯入會覆蓋現有全部資料。</p>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeSettings()">取消</button>
       <button class="btn btn-primary" onclick="saveSettings()">儲存</button>
@@ -186,26 +197,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <button class="btn btn-primary" onclick="doPrint()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>列印 / 存 PDF
       </button>
-    </div>
-  </div>
-</div>
-
-<!-- Backup Modal -->
-<div class="overlay" id="backupOverlay">
-  <div class="modal" style="max-width:340px">
-    <h2>備份 / 還原</h2>
-    <p style="font-size:13px;color:var(--text2);margin-bottom:1.25rem">建議定期匯出備份，避免 iOS 自動清除資料。</p>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <button class="btn btn-primary" onclick="exportJSON()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>匯出 JSON 備份
-      </button>
-      <button class="btn" onclick="document.getElementById('importFileInput').click()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg>匯入 JSON 還原
-      </button>
-      <p style="font-size:11px;color:var(--danger-text)">⚠️ 匯入會覆蓋現有全部資料，請確認後再執行。</p>
-    </div>
-    <div class="modal-actions">
-      <button class="btn" onclick="closeBackup()">關閉</button>
     </div>
   </div>
 </div>
@@ -600,9 +591,29 @@ function closeExport() { document.getElementById('exportOverlay').classList.remo
 
 function doPrint() {
   const content = document.getElementById('pdfPreview').innerHTML;
-  const w = window.open('', '_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>密碼清單</title><style>body{font-family:-apple-system,sans-serif;padding:2rem;color:#1a1a18}p{margin-bottom:8px}table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;padding:8px 10px;background:#f0efed;color:#6b6b68;font-size:11px;font-weight:600}td{padding:9px 10px;border-bottom:.5px solid rgba(0,0,0,.1)}tr:last-child td{border-bottom:none}</style></head><body>${content}</body></html>`);
-  w.document.close(); w.focus(); setTimeout(() => w.print(), 300);
+  let style = document.getElementById('_printStyle');
+  if (!style) {
+    style = document.createElement('style');
+    style.id = '_printStyle';
+    document.head.appendChild(style);
+  }
+  style.textContent = `@media print {
+    body > *:not(#_printArea) { display: none !important; }
+    #_printArea { display: block !important; font-family: -apple-system, sans-serif; color: #1a1a18; }
+    #_printArea table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    #_printArea th { text-align: left; padding: 8px 10px; background: #f0efed; color: #6b6b68; font-size: 11px; font-weight: 600; }
+    #_printArea td { padding: 9px 10px; border-bottom: .5px solid rgba(0,0,0,.1); }
+    #_printArea tr:last-child td { border-bottom: none; }
+  }`;
+  let area = document.getElementById('_printArea');
+  if (!area) {
+    area = document.createElement('div');
+    area.id = '_printArea';
+    area.style.display = 'none';
+    document.body.appendChild(area);
+  }
+  area.innerHTML = content;
+  window.print();
 }
 
 document.addEventListener('keydown', e => {
